@@ -17,12 +17,15 @@ import org.apache.spark.api.java.JavaSparkContext;
  *
  */
 public class App {
-	private final static String TOPIC = "lambda-demo";
-	private final static String BROKERS = "localhost:9092";
+	//default values
+	private static String brokers = "localhost:9092";
+	private static String groupId = "tweets-batch-demo";
+	private static String topic = "tweets-ml-raw";
+	private static String outputDir="/home/jrp/tweetsBatchOutput";
 
 	private static KafkaConsumer<String, String> createConsumer() {
 		Properties props = new Properties();
-		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BROKERS);
+		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers);
 		props.put(ConsumerConfig.CLIENT_ID_CONFIG, "LambdaConsumer");
 		props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
 		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
@@ -35,7 +38,7 @@ public class App {
 
 	static void runConsumer() throws Exception {
 		KafkaConsumer<String, String> consumer = createConsumer();
-		consumer.subscribe(Collections.singletonList(TOPIC));
+		consumer.subscribe(Collections.singletonList(topic));
 		final int minBatchSize = 05;
 		List<String> buffer = new ArrayList<>();
 		try {
@@ -72,12 +75,18 @@ public class App {
 		JavaRDD<String> batchRDD = jsc.parallelize(buffer);
 
 		batchRDD.saveAsTextFile("file://"
-				+ "/home/jrp/workspace_1/LambdaBatchConsumer/output/kafkabkp_"
+				+ outputDir + "/Tweetbkp_"
 				+ startTime);
 		jsc.close();
 	}
 
 	public static void main(String... args) throws Exception {
+		if (args.length == 4) {
+			brokers = args[0];
+			groupId = args[1];
+			topic = args[2];
+			outputDir = args[3];
+		}
 		runConsumer();
 	}
 }
