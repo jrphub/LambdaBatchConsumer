@@ -21,7 +21,7 @@ public class App {
 	private static String brokers = "localhost:9092";
 	private static String groupId = "tweets-batch-demo";
 	private static String topic = "tweets-ml-raw";
-	private static String outputDir="/home/jrp/tweetsBatchOutput";
+	private static String outputDir="tweetsBatchOutput";
 
 	private static KafkaConsumer<String, String> createConsumer() {
 		Properties props = new Properties();
