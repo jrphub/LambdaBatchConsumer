@@ -8,6 +8,8 @@ import java.util.Properties;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.LongDeserializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -19,27 +21,28 @@ import org.apache.spark.api.java.JavaSparkContext;
 public class App {
 	//default values
 	private static String brokers = "localhost:9092";
-	private static String groupId = "tweets-batch-demo";
-	private static String topic = "tweets-ml-raw";
+	private static String groupId = "tweets-batch";
+	private static String topic = "tweets";
 	private static String outputDir="tweetsBatchOutput";
 
 	private static KafkaConsumer<String, String> createConsumer() {
 		Properties props = new Properties();
 		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers);
-		props.put(ConsumerConfig.CLIENT_ID_CONFIG, "LambdaConsumer");
-		props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+		props.put(ConsumerConfig.CLIENT_ID_CONFIG, groupId);
+		props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, Boolean.FALSE);
 		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-				"org.apache.kafka.common.serialization.IntegerDeserializer");
+				StringDeserializer.class.getName());
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-				"org.apache.kafka.common.serialization.StringDeserializer");
+				StringDeserializer.class.getName());
 		props.put(ConsumerConfig.GROUP_ID_CONFIG, "batch");
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		return new KafkaConsumer<>(props);
 	}
 
 	static void runConsumer() throws Exception {
 		KafkaConsumer<String, String> consumer = createConsumer();
 		consumer.subscribe(Collections.singletonList(topic));
-		final int minBatchSize = 05;
+		final int minBatchSize = 5;
 		List<String> buffer = new ArrayList<>();
 		try {
 			while (true) {
@@ -47,14 +50,14 @@ public class App {
 						.poll(1000);
 				consumerRecords.forEach(record -> {
 					buffer.add(record.value());
-					System.out.printf("Consumer Record:(%d, %s, %d, %d)\n",
+					System.out.printf("Consumer Record:(%s, %s, %d, %d)\n",
 							record.key(), record.value(), record.partition(),
 							record.offset());
 				});
 
 				if (buffer.size() >= minBatchSize) {
 					store(buffer);
-					consumer.commitSync();
+					consumer.commitAsync();
 					buffer.clear();
 					break;
 				}
